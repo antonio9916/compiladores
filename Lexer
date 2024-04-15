@@ -1,0 +1,92 @@
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+public class Lexer {
+
+    public static void main(String[] args) {
+        String inputFile = "fuente.txt";
+        String outputFile = "output.txt";
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(inputFile));
+             BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile))) {
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                processLine(line.trim(), writer);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static boolean processLine(String line, BufferedWriter writer) throws IOException {
+    // Expresiones regulares para reconocer los tokens válidos
+    String regex = "\\{|\\}|\\[|\\]|,|:|\"(?:\\\\\"|[^\"])*\"|-?\\d+(?:\\.\\d+)?(?:[eE][-+]?\\d+)?|true|false|null";
+    Pattern pattern = Pattern.compile(regex);
+    Matcher matcher = pattern.matcher(line);
+    StringBuilder lexemes = new StringBuilder();
+
+    int lastMatchEnd = 0;
+    while (matcher.find()) {
+        String token = matcher.group().trim();
+        if (!token.isEmpty()) {
+            String lexeme = getLexeme(token);
+            lexemes.append(lexeme).append(" ");
+            lastMatchEnd = matcher.end();
+        } else {
+            // Si un token está vacío, significa que hay un carácter inválido
+            writer.write("Error léxico en la línea: " + line.substring(lastMatchEnd));
+            writer.newLine();
+            return false; // Se detectó un error léxico
+        }
+    }
+
+    if (lastMatchEnd < line.length()) {
+        // Si quedan caracteres no reconocidos al final de la línea
+        writer.write("Error léxico en la línea: " + line.substring(lastMatchEnd));
+        writer.newLine();
+        return false; // Se detectó un error léxico
+    }
+
+    writer.write(lexemes.toString().trim());
+    writer.newLine();
+    return true; // La línea se procesó correctamente sin errores léxicos
+}
+
+
+    private static String getLexeme(String token) {
+        switch (token) {
+            case "{":
+                return "L_LLAVE";
+            case "}":
+                return "R_LLAVE";
+            case "[":
+                return "L_CORCHETE";
+            case "]":
+                return "R_CORCHETE";
+            case ",":
+                return "COMA";
+            case ":":
+                return "DOS_PUNTOS";
+            case "true":
+                return "PR_TRUE";
+            case "false":
+                return "PR_FALSE";
+            case "null":
+                return "PR_NULL";
+            default:
+                if (token.matches("\"(?:\\\\\"|[^\"])*\"")) {
+                    return "LITERAL_CADENA";
+                } else if (token.matches("-?\\d+(\\.\\d+)?(?:[eE][-+]?\\d+)?")) {
+                    return "LITERAL_NUM";
+                } else {
+                    return "ERROR"; // Si el token no coincide con ningún componente léxico válido
+                }
+        }
+    }
+}
